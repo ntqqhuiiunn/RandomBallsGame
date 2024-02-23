@@ -1,7 +1,7 @@
 import os
 import cv2
 import sys
-from utils import loadConfig
+from src.utils import loadConfig
 
 
 class ButtonManager:

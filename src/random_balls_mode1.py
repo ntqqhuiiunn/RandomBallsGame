@@ -3,8 +3,8 @@ import numpy
 import random
 import sys
 from cvzone.HandTrackingModule import HandDetector
-from buttons_manager import ButtonManager
-from utils import loadConfig, drawSkeleton, setUpBackground
+from src.buttons_manager import ButtonManager
+from src.utils import loadConfig, drawSkeleton, setUpBackground
 
 
 class RandomBallsMode1:
@@ -183,7 +183,7 @@ class RandomBallsMode1:
             else:
                 retWin, frameWin = self.win.read()
                 if not retWin:
-                    break
+                    sys.exit()
                 frameWin = cv2.resize(
                     frameWin, (frame.shape[1], frame.shape[0]))
                 mask = frameWin
