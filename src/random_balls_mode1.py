@@ -8,7 +8,7 @@ from src.utils import loadConfig, drawSkeleton, setUpBackground
 
 
 class RandomBallsMode1:
-    def __init__(self, video, configPath) -> None:
+    def __init__(self, video, configPath, item, itemName) -> None:
         self.config = loadConfig(configPath)
         self.width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -17,7 +17,7 @@ class RandomBallsMode1:
             maxHands=1, detectionCon=0.8, minTrackCon=0.7)
         self.numBalls = self.config["mode1"]["numBalls"]
         self.colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (0, 255, 255)]
-        self.balls = []
+        self.balls = numpy.empty([self.numBalls, 3], dtype=numpy.uint16)
         self.score = 0
         self.ballRadius = self.config["mode1"]["radius"]
         self.lowerBoundX, self.upperBoundX = self.config["global"][
@@ -29,15 +29,14 @@ class RandomBallsMode1:
         colorsRange.remove(self.currentColor)
         self.wrongColor = random.choice(colorsRange)
         for i in range(self.numBalls):
-            y = random.randint(self.lowerBoundY, self.upperBoundY)
-            x = random.randint(self.lowerBoundX + self.ballRadius, self.upperBoundX - self.ballRadius)
-            self.balls.append([x, y, i % 4])
+            x, y = self._generateBall()
+            self.balls[i] = numpy.array([x, y, i % 4])
         self.balls = numpy.array(self.balls)
         self.introVideo = cv2.VideoCapture(r"images\countdown.mp4")
         self.limit = self.config["global"]["limit"]
-        self.item = self._setUpImage(r"images\item.png")
+        self._setUpItem(item)
         self.win = cv2.VideoCapture(r"images\win.mp4")
-        self.minus = self._setUpImage(r"images\minus.png")
+        self._setUpMinus(itemName)
         self.plus = self._setUpImage(r"images\plus.png")
         self.buttonsManager = ButtonManager(configPath)
 
@@ -48,16 +47,36 @@ class RandomBallsMode1:
         obj = cv2.flip(obj, 1)
         return obj
 
+    def _setUpItem(self, item):
+        obj = cv2.resize(
+            item, (2 * int(self.ballRadius / 1.4142) + 1, 2 * int(self.ballRadius / 1.4142) + 1))
+        obj = cv2.flip(obj, 1)
+        self.item = obj
+
+    def _setUpMinus(self, name):
+        if name == "bomb":
+            self.minus = self._setUpImage(r"images\bomb_drop.png")
+        elif name == "egg":
+            self.minus = self._setUpImage(r"images\egg_drop.png")
+        else:
+            self.minus = self._setUpImage(r"images\minus.png")
+
     def _up(self) -> None:
         for ball in self.balls:
             ball[1] += self.config["mode1"]["velocity"]
 
-    def _dropBall(self, index: int) -> None:
-        x = random.randint(self.lowerBoundX + self.ballRadius, self.upperBoundX - self.ballRadius)
+    def _generateBall(self):
+        x = random.randint(self.lowerBoundX + self.ballRadius,
+                           self.upperBoundX - self.ballRadius)
         y = random.randint(self.lowerBoundY, self.upperBoundY)
         while self._isCollision(x, y, self.balls):
-            x = random.randint(self.lowerBoundX + self.ballRadius, self.upperBoundX - self.ballRadius)
+            x = random.randint(self.lowerBoundX + self.ballRadius,
+                               self.upperBoundX - self.ballRadius)
             y = random.randint(self.lowerBoundY, self.upperBoundY)
+        return x, y
+
+    def _dropBall(self, index: int) -> None:
+        x, y = self._generateBall()
         self.balls[index] = [x, y, index % 4]
 
     def _isCollision(self, x, y, existingBalls):
@@ -166,15 +185,19 @@ class RandomBallsMode1:
                             self._dropBall(i)
                     for i in range(len(self.balls)):
                         c = self.colors[self.balls[i][2]]
-                        self._displayItem(mask, self.balls[i][:2], self.item, isBall=True, color=c)
+                        self._displayItem(
+                            mask, self.balls[i][:2], self.item, isBall=True, color=c)
                     self._displayUserScreen(mask, image)
                     mask = cv2.flip(mask, 1)
                     if handLocation is not None:
                         for x, y in list(zip(handLocation[0], handLocation[1])):
                             mask[x][y] = (255, 255, 255)
-                    cv2.line(mask, (0, self.limit + self.ballRadius), (self.width - self.lowerBoundX, self.limit + self.ballRadius), (0, 0, 255), thickness=2)
-                    cv2.line(mask, (0, self.lowerBoundY - self.ballRadius), (self.width, self.lowerBoundY - self.ballRadius), (0, 255, 255), thickness=2)
-                    cv2.line(mask, (self.width - self.lowerBoundX, self.lowerBoundY - self.ballRadius), (self.width - self.lowerBoundX, self.limit + self.ballRadius), (255, 0, 255), 2)
+                    cv2.line(mask, (0, self.limit + self.ballRadius), (self.width -
+                             self.lowerBoundX, self.limit + self.ballRadius), (0, 0, 255), thickness=2)
+                    cv2.line(mask, (0, self.lowerBoundY - self.ballRadius), (self.width,
+                             self.lowerBoundY - self.ballRadius), (0, 255, 255), thickness=2)
+                    cv2.line(mask, (self.width - self.lowerBoundX, self.lowerBoundY - self.ballRadius),
+                             (self.width - self.lowerBoundX, self.limit + self.ballRadius), (255, 0, 255), 2)
                     cv2.putText(mask, "Color: " + self._getNameColor(self.currentColor), (0, 25), fontScale=1.0,
                                 fontFace=cv2.FONT_HERSHEY_SIMPLEX, color=self.colors[self.wrongColor], thickness=2, lineType=cv2.LINE_AA)
                     cv2.putText(mask, "Score: " + str(self.score), (0, 50), fontScale=1.0,

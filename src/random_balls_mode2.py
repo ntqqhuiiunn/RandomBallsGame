@@ -9,7 +9,7 @@ from src.utils import loadConfig, drawSkeleton, setUpBackground
 
 
 class RandomBallsMode2:
-    def __init__(self, video, configPath) -> None:
+    def __init__(self, video, configPath, item, itemName) -> None:
         self.config = loadConfig(configPath)
         self.width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -25,7 +25,7 @@ class RandomBallsMode2:
         self._initialBalls(self.config["mode2"]["numBalls"])
         self.introVideo = cv2.VideoCapture(r"images\countdown.mp4")
         self.limit = self.config["global"]["limit"]
-        self.item = self._setUpImage(r"images\item.png")
+        self._setUpItem(item)
         self.stone = self._setUpImage(r"images\stone.png")
         self.win = cv2.VideoCapture(r"images\win.mp4")
         self.nextLevel = cv2.VideoCapture(r"images\next_level.mp4")
@@ -35,7 +35,7 @@ class RandomBallsMode2:
         self.level = 0
         self.totalScore = 0
         self._initialStone()
-        self.minus = self._setUpImage(r"images\minus.png")
+        self._setUpMinus(itemName)
         self.plus = self._setUpImage(r"images\plus.png")
         self.buttonsManager = ButtonManager(configPath)
 
@@ -46,6 +46,14 @@ class RandomBallsMode2:
             for stone in self.stones:
                 stone[1] += velocity
 
+    def _setUpMinus(self, name):
+        if name == "bomb":
+            self.minus = self._setUpImage(r"images\bomb_drop.png")
+        elif name == "egg":
+            self.minus = self._setUpImage(r"images\egg_drop.png")
+        else:
+            self.minus = self._setUpImage(r"images\minus.png")
+
     def _setUpImage(self, imagePath):
         obj = cv2.imread(imagePath)
         obj = cv2.resize(
@@ -53,16 +61,19 @@ class RandomBallsMode2:
         obj = cv2.flip(obj, 1)
         return obj
 
-    def _initialBalls(self, numBalls: int):
-        self.balls = []
-        for _ in range(numBalls):
-            y = random.randint(self.lowerBoundY, self.upperBoundY)
-            x = random.randint(self.lowerBoundX + self.ballRadius,
-                               self.upperBoundX - self.ballRadius)
-            self.balls.append([x, y])
-        self.balls = numpy.array(self.balls)
+    def _setUpItem(self, item):
+        obj = cv2.resize(
+            item, (2 * int(self.ballRadius / 1.4142) + 1, 2 * int(self.ballRadius / 1.4142) + 1))
+        obj = cv2.flip(obj, 1)
+        self.item = obj
 
-    def _dropBall(self, index: int) -> None:
+    def _initialBalls(self, numBalls: int):
+        self.balls = numpy.empty([numBalls, 2], dtype=numpy.uint16)
+        for i in range(numBalls):
+            x, y = self._generateBall()
+            self.balls[i] = numpy.array([x, y])
+
+    def _generateBall(self):
         x = random.randint(self.lowerBoundX + self.ballRadius,
                            self.upperBoundX - self.ballRadius)
         y = random.randint(self.lowerBoundY, self.upperBoundY)
@@ -70,6 +81,10 @@ class RandomBallsMode2:
             x = random.randint(self.lowerBoundX + self.ballRadius,
                                self.upperBoundX - self.ballRadius)
             y = random.randint(self.lowerBoundY, self.upperBoundY)
+        return x, y
+
+    def _dropBall(self, index: int) -> None:
+        x, y = self._generateBall()
         self.balls[index] = [x, y]
 
     def _initialStone(self):
@@ -140,7 +155,6 @@ class RandomBallsMode2:
         tempLandmarks = [(width - landmark[0], landmark[1])
                          for landmark in landmarks]
         return tempLandmarks
-
 
     def _displayUserScreen(self, frame, userScreen):
         ratio = userScreen.shape[0] / userScreen.shape[1]
@@ -238,12 +252,11 @@ class RandomBallsMode2:
                                             self._displayItem(
                                                 mask, stone[0], stone[1], self.minus)
                                 if self.level == 0:
-                                    velocity = self.config["mode2"]["velocity"] // 2
-                                elif self.level == 1:
                                     velocity = self.config["mode2"]["velocity"]
+                                elif self.level == 1:
+                                    velocity = self.config["mode2"]["velocity"] * 2
                                 else:
-                                    velocity = 2 * \
-                                        self.config["mode2"]["velocity"]
+                                    velocity = self.config["mode2"]["velocity"] ** 2
                                 self._up(velocity=velocity)
                                 for i in range(len(self.balls)):
                                     if self.balls[i][1] >= self.limit:

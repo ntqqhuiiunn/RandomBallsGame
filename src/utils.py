@@ -32,7 +32,9 @@ def drawSkeleton(landmarks, frame):
     _, thMask = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY)
     handLocation = numpy.where(thMask > 0)
     return handLocation
+
+
 def setUpBackground(frame):
     temp = numpy.full(frame.shape, fill_value=(
-            23, 127, 222), dtype=frame.dtype)
+        23, 127, 222), dtype=frame.dtype)
     return temp
