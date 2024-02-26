@@ -4,7 +4,7 @@ import random
 import sys
 from cvzone.HandTrackingModule import HandDetector
 from src.buttons_manager import ButtonManager
-from src.utils import loadConfig, drawSkeleton, setUpBackground
+from src.utils import loadConfig, showMouse
 
 
 class RandomBallsMode1:
@@ -37,8 +37,11 @@ class RandomBallsMode1:
         self._setUpItem(item)
         self.win = cv2.VideoCapture(r"images\win.mp4")
         self._setUpMinus(itemName)
+        self.itemName = itemName
         self.plus = self._setUpImage(r"images\plus.png")
         self.buttonsManager = ButtonManager(configPath)
+        self.fixedSize = self.config["global"]["fixedFrameSize"]
+        self._setUpBackground()
 
     def _setUpImage(self, imagePath):
         obj = cv2.imread(imagePath)
@@ -46,6 +49,10 @@ class RandomBallsMode1:
             obj, (2 * int(self.ballRadius / 1.4142) + 1, 2 * int(self.ballRadius / 1.4142) + 1))
         obj = cv2.flip(obj, 1)
         return obj
+
+    def _setUpBackground(self):
+        temp = cv2.imread(r"images\back1.png")
+        self.background = cv2.resize(temp, (self.width, self.height))
 
     def _setUpItem(self, item):
         obj = cv2.resize(
@@ -55,24 +62,28 @@ class RandomBallsMode1:
 
     def _setUpMinus(self, name):
         if name == "bomb":
-            self.minus = self._setUpImage(r"images\bomb_drop.png")
+            self.minus = cv2.imread(r"images\bomb_drop.png")
         elif name == "egg":
-            self.minus = self._setUpImage(r"images\egg_drop.png")
+            self.minus = cv2.imread(r"images\egg_drop.png")
         else:
-            self.minus = self._setUpImage(r"images\minus.png")
+            self.minus = cv2.imread(r"images\minus.png")
+        self.minus = cv2.resize(
+            self.minus, (4 * self.ballRadius + 1, 4 * self.ballRadius + 1))
+        self.minus = cv2.flip(self.minus, 1)
 
     def _up(self) -> None:
         for ball in self.balls:
             ball[1] += self.config["mode1"]["velocity"]
 
     def _generateBall(self):
-        x = random.randint(self.lowerBoundX + self.ballRadius,
-                           self.upperBoundX - self.ballRadius)
-        y = random.randint(self.lowerBoundY, self.upperBoundY)
+        fromX, toX = self.lowerBoundX + 4 * self.ballRadius + \
+            1, self.upperBoundX - 4 * self.ballRadius - 1
+        fromY, toY = self.lowerBoundY, self.upperBoundY
+        x = random.randint(fromX, toX)
+        y = random.randint(fromY, toY)
         while self._isCollision(x, y, self.balls):
-            x = random.randint(self.lowerBoundX + self.ballRadius,
-                               self.upperBoundX - self.ballRadius)
-            y = random.randint(self.lowerBoundY, self.upperBoundY)
+            x = random.randint(fromX, toX)
+            y = random.randint(fromY, toY)
         return x, y
 
     def _dropBall(self, index: int) -> None:
@@ -116,9 +127,14 @@ class RandomBallsMode1:
     def _displayItem(self, frame, coordinate, item, isBall=False, color=None):
         x, y = coordinate[0], coordinate[1]
         obj = item.copy()
+        mask = cv2.cvtColor(item, cv2.COLOR_BGR2GRAY)
         size = obj.shape[0]
-        frame[y - size // 2: y + (size + 1) // 2,
-              x - size // 2: x + (size + 1) // 2] = obj
+
+        mask_selection = mask > 0
+        frame_selection = frame[y - size // 2: y +
+                                (size + 1) // 2, x - size // 2: x + (size + 1) // 2]
+        frame_selection[mask_selection] = item[mask_selection]
+
         if isBall:
             assert color is not None, "Color must be not null"
             cv2.circle(frame, (x, y), self.ballRadius, color, 2)
@@ -140,13 +156,12 @@ class RandomBallsMode1:
               bottomRightX - newWidth: bottomRightX] = screen
 
     def run(self):
-
         while True:
-            handLocation = None
             cursorX = -1
             cursorY = -1
             ret, frame = self.video.read()
-            mask = setUpBackground(frame)
+            image = frame
+            mask = self.background.copy()
             self.buttonsManager.setupQuit(mask, reversed=True)
             retIntro, frameIntro = self.introVideo.read()
 
@@ -163,11 +178,8 @@ class RandomBallsMode1:
                         landmarks = hand[0]['lmList']
                         cursor = landmarks[8]
                         self.buttonsManager.moveToQuitButton(mask, cursor)
-                        displayedHand = self._displayHand(
-                            landmarks, (frame.shape[0], frame.shape[1]))
-                        handLocation = drawSkeleton(
-                            displayedHand, frame)
                         cursorX, cursorY = cursor[0], cursor[1]
+                        showMouse(mask, cursorX, cursorY)
                     if cursorX >= 0 and cursorY >= 0:
                         rightBalls, wrongItems = self._searchBall(
                             cursorX, cursorY)
@@ -187,11 +199,7 @@ class RandomBallsMode1:
                         c = self.colors[self.balls[i][2]]
                         self._displayItem(
                             mask, self.balls[i][:2], self.item, isBall=True, color=c)
-                    self._displayUserScreen(mask, image)
                     mask = cv2.flip(mask, 1)
-                    if handLocation is not None:
-                        for x, y in list(zip(handLocation[0], handLocation[1])):
-                            mask[x][y] = (255, 255, 255)
                     cv2.line(mask, (0, self.limit + self.ballRadius), (self.width -
                              self.lowerBoundX, self.limit + self.ballRadius), (0, 0, 255), thickness=2)
                     cv2.line(mask, (0, self.lowerBoundY - self.ballRadius), (self.width,
@@ -210,10 +218,16 @@ class RandomBallsMode1:
                 frameWin = cv2.resize(
                     frameWin, (frame.shape[1], frame.shape[0]))
                 mask = frameWin
+            mask = cv2.resize(mask, self.fixedSize)
             winname = "Pamdom Balls"
-            cv2.namedWindow(winname)
-            cv2.moveWindow(winname, 360, 30)
+            cv2.namedWindow(winname, cv2.WINDOW_FULLSCREEN)
+            cv2.moveWindow(winname, 10, 10)
             cv2.imshow(winname, mask)
+            userScreen = "User Cam"
+            cv2.namedWindow(userScreen, cv2.WINDOW_FULLSCREEN)
+            cv2.moveWindow(userScreen, 1 + self.fixedSize[0], 10)
+            image = cv2.flip(image, 1)
+            cv2.imshow(userScreen, image)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 sys.exit()

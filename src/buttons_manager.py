@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy
 import sys
-from src.utils import loadConfig, setUpBackground
+from src.utils import loadConfig
 
 
 class ButtonManager:
@@ -48,7 +48,8 @@ class ButtonManager:
         frame[y - h // 2: y + h // 2 + 1, x -
               w // 2: x + w // 2 + 1] = self.start
 
-    def moveOverStartButton(self, frame, cursor):
+    def moveOverStartButton(self, frame, cursor, clicked):
+        selected = True
         w, h = self.start.shape[1], self.start.shape[0]
         x, y = frame.shape[1] // 2, frame.shape[0] // 2
         lowerBoundX, upperBoundX = x - w // 2, x + w // 2
@@ -56,11 +57,10 @@ class ButtonManager:
         if upperBoundX > cursor[0] > lowerBoundX and upperBoundY > cursor[1] > lowerBoundY:
             frame[lowerBoundY: upperBoundY + 1,
                   lowerBoundX: upperBoundX + 1] = self.temporaryStart
+            selected = True
+        if selected and clicked:
             return True
-        else:
-            frame[lowerBoundY: upperBoundY + 1,
-                  lowerBoundX: upperBoundX + 1] = self.start
-            return False
+        return False
 
     def moveToQuitButton(self, frame, cursor):
         x, y = frame.shape[1] - 5 - \
@@ -93,42 +93,47 @@ class ButtonManager:
         w1, h1, w2, h2 = self.mode1.shape[1], self.mode1.shape[0], self.mode2.shape[1], self.mode2.shape[0]
         frame[y0 - h1 // 2: y0 + h1 // 2 + 1,
               x0 - w1 - 75: x0 - 75] = self.mode1
+
         frame[y0 - h2 // 2: y0 + h2 // 2 + 1,
               x0 + 75: x0 + w2 + 75] = self.mode2
 
-    def selectMode1(self, frame, cursor):
-        x = frame.shape[1] - cursor[0]
-        y = frame.shape[0] - cursor[1]
+    def selectMode1(self, frame, cursor, clicked):
+        selected = False
+        x = frame.shape[1] - 1 - cursor[0]
+        y = cursor[1]
+        x0, y0 = frame.shape[1] // 2, frame.shape[0] // 2
+        y0 += 30
         w1, h1 = self.mode1.shape[1], self.mode1.shape[0]
-        x0, y0 = frame.shape[1] // 2, frame.shape[0] // 2
-        y0 += 30
-        lowerBoundX, upperBoundX = x0 - w1 - 75, x0 - 75
-        lowerBoundY, upperBoundY = y0 - h1 // 2, y0 + h1 // 2
-        if upperBoundX > x > lowerBoundX and upperBoundY > y > lowerBoundY:
-            frame[lowerBoundY: upperBoundY + 1, lowerBoundX:
+        lowerBoundY = y0 - h1 // 2
+        upperBoundY = y0 + h1 // 2 + 1
+        lowerBoundX = x0 - w1 - 75
+        upperBoundX = x0 - 75
+        if upperBoundX > x >= lowerBoundX and upperBoundY > y >= lowerBoundY:
+            frame[lowerBoundY: upperBoundY, lowerBoundX:
                   upperBoundX] = self.temporaryMode1
+            selected = True
+        if selected and clicked:
             return True
-        else:
-            frame[lowerBoundY: upperBoundY + 1, lowerBoundX:
-                  upperBoundX] = self.mode1
-            return False
+        return False
 
-    def selectMode2(self, frame, cursor):
-        x = frame.shape[1] - cursor[0]
-        y = frame.shape[0] - cursor[1]
-        w2, h2 = self.mode2.shape[1], self.mode2.shape[0]
+    def selectMode2(self, frame, cursor, clicked):
+        selected = False
+        x = frame.shape[1] - 1 - cursor[0]
+        y = cursor[1]
         x0, y0 = frame.shape[1] // 2, frame.shape[0] // 2
         y0 += 30
-        lowerBoundX, upperBoundX = x0 + 75, x0 + w2 + 75
-        lowerBoundY, upperBoundY = y0 - h2 // 2, y0 + h2 // 2
-        if upperBoundX > x > lowerBoundX and upperBoundY > y > lowerBoundY:
-            frame[lowerBoundY: upperBoundY + 1,
+        w2, h2 = self.mode2.shape[1], self.mode2.shape[0]
+        lowerBoundY = y0 - h2 // 2
+        upperBoundY = y0 + h2 // 2 + 1
+        lowerBoundX = x0 + 75
+        upperBoundX = x0 + w2 + 75
+        if upperBoundX > x >= lowerBoundX and upperBoundY > y >= lowerBoundY:
+            frame[lowerBoundY: upperBoundY,
                   lowerBoundX: upperBoundX] = self.temporaryMode2
+            selected = True
+        if selected and clicked:
             return True
-        else:
-            frame[lowerBoundY: upperBoundY + 1,
-                  lowerBoundX: upperBoundX] = self.mode2
-            return False
+        return False
 
     def displaySelectItem(self, frame):
         x, y = frame.shape[1] // 2, frame.shape[0] // 3 - 80
@@ -138,31 +143,31 @@ class ButtonManager:
         itemRange = 150
         y0 = frame.shape[0] // 2
         for i in range(len(self.items)):
-            h0, w0 = 150, int(
-                self.items[i].shape[1] / self.items[0].shape[0] * 150)
+            h0, w0 = 100, int(
+                self.items[i].shape[1] / self.items[0].shape[0] * 100)
             obj = cv2.resize(self.items[i], (w0, h0))
             lowerY = y0 - h0 // 2
             upperY = y0 + (h0 + 1) // 2
             lowerX = (i + 1) * itemRange + 30 * i - w0 // 2
             upperX = (i + 1) * itemRange + 30 * i + (w0 + 1) // 2
-            frame[lowerY: upperY, lowerX: upperX] = obj
+            gray = cv2.cvtColor(obj, cv2.COLOR_BGR2GRAY)
+            selection = frame[lowerY: upperY, lowerX: upperX]
+            selection[gray > 0] = obj[gray > 0]
             self.itemPosition.append([lowerY, upperY, lowerX, upperX])
 
-    def getItem(self, hand, frame):
+    def getItem(self, hand, frame, clicked):
+        selected = False
+        w = frame.shape[1]
         handX, handY = hand[0], hand[1]
+        handX = w - 1 - handX
         for i, position in enumerate(self.itemPosition):
             if position[0] < handY < position[1] and position[2] < handX < position[3]:
                 cv2.rectangle(frame, (position[2], position[0]), (position[3], position[1]), color=(
                     0, 0, 255), thickness=10)
-                cv2.waitKey(50)
-                return self.items[i], self.nameItems[i]
+                selected = True
+                if selected and clicked:
+                    i = len(self.items) - 1 - i
+                    return self.items[i], self.nameItems[i]
         return None, None
 
 
-if __name__ == "__main__":
-    frame = numpy.zeros((480, 640, 3), dtype=numpy.uint8)
-    mask = setUpBackground(frame)
-    manager = ButtonManager(r"config\config.yaml")
-    manager.displaySelectItem(mask)
-    cv2.imshow("", mask)
-    cv2.waitKey(0)
