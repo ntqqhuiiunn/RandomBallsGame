@@ -1,20 +1,18 @@
 global:
-  lowerBoundX: 200 # Lower bound on x-axis
-  upperBoundX: 640 # Upper bound on x-axis
-  lowerBoundY: 100 # Lower bound on y-axis
-  upperBoundY: 280 # Upper bound on y-axis
+  lowerBoundX: 400 # Lower bound on x-axis
+  upperBoundX: 1100 # Upper bound on x-axis
+  lowerBoundY: 0 # Lower bound on y-axis
+  upperBoundY: 630 # Upper bound on y-axis
   limit: 380 # Distance from the bottom of frame to the limit line of balls
   buttonSize: [201, 201] # Size of "start" button
   modeSize: [201, 171] # Size of "mode" button
-  quitSize: [41, 41] # Size of "quit" button
-
-mode1:
-  numBalls: 4 # Number of balls in mode 1
-  radius: 30 # Radius of balls
-  velocity: 2 # Velocity of balls in mode 1
-mode2:
-  numBalls: 2 # Number of balls in mode 2
-  radius: 30 # Radius of balls
-  velocity: 2 # Velocity of balls in mode 2
-  timeLimit: 30.0 # Time limit of final round
-  limitToWin: 5 # Distance from lowest stone to the limit line. The greater paramter, the easier game.
+  quitSize: [61, 41] # Size of "quit" button
+  fixedFrameSize: [840, 630] # Size of frame
+timeLimit:
+  level1: 60.0
+  level2: 60.0
+  level3: 60.0
+numberOfItems:
+  level1: 10
+  level2: 10
+  level3: 10

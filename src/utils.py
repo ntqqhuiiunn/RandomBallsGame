@@ -1,5 +1,4 @@
 import yaml
-import random
 import numpy
 import cv2
 
@@ -34,9 +33,9 @@ def drawSkeleton(landmarks, frame):
     return handLocation
 
 
-def showMouse(frame, x, y, mode="mode"):
-    mouse = cv2.imread(r"images\mouse.png")
-    mouse = cv2.resize(mouse, (41, 41))
+def showMouse(frame, cursor, mouse, mode="mode"):
+    x = cursor[0]
+    y = cursor[1]
     if mode == "mode":
         mouse = cv2.flip(mouse, 1)
     gray_mouse = cv2.cvtColor(mouse, cv2.COLOR_BGR2GRAY)
@@ -89,34 +88,51 @@ def createMask(item):
         mask[h, start_index: end_index + 1] = 1
     return mask
 
+# def getRatioPause(landmarks: numpy.ndarray):
+#     first = landmarks[[7, 11, 15, 19]]
+#     second = landmarks[[6, 10, 14, 18]]
+#     anchor = landmarks[0]
+#     second_number = numpy.add(numpy.square(
+#         second[:, 1] - anchor[1]), numpy.square(second[:, 0] - anchor[0]))
 
-item = cv2.imread(r"images\ball.png")
-item = cv2.resize(item, (41, 41))
-mask = createMask(item)
-print(mask.shape)
-frame = numpy.zeros((640, 480),  dtype=item.dtype)
-size = item.shape[0]
-x = 60
-y = 70
-selection = frame[y - size // 2: y +
-                  (size + 1) // 2, x - size // 2: x + (size + 1) // 2]
-print(selection.shape)
-print(item[mask > 0])
-print(selection[mask > 0])
+#     first_number = numpy.add(numpy.square(
+#         first[:, 1] - anchor[1]), numpy.square(first[:, 0] - anchor[0]))
+#     first_number = numpy.multiply(first_number, [100, 1, 1, 1])
+#     second_number = numpy.multiply(second_number, [100, 1, 1, 1])
 
-a = numpy.array([[0, 0, 0, 0],
-                 [0, 0, 1, 2],
-                 [0, 2, 3, 0],
-                 [0, 1, 0, 0]])
-d = numpy.array([[0, 0, 0, 0],
-                 [0, 0, 1, 2],
-                 [0, 2, 3, 0],
-                 [0, 1, 0, 0]])
-b = a > 0
-c = numpy.array([[-1, -1, -1, -1],
-                 [-1, -1, -1, -1],
-                 [-1, -1, -1, -1],
-                 [-1, -1, -1, -1]])
-print(b)
-c[a > 1] = d[a > 1]
-print(c)
+#     ratio = numpy.sum(first_number) / (numpy.sum(second_number) + 0.001)
+#     return ratio
+
+
+def getRatioPause(landmarks: numpy.ndarray):
+    first = landmarks[[7, 11, 15, 19]]
+    second = landmarks[[6, 10, 14, 18]]
+    distance = numpy.subtract(first[:, 1], second[:, 1])
+    return numpy.all(distance > 0)
+# def getRatioOpen(landmarks: numpy.ndarray):
+#     first = landmarks[[11, 15, 19]]
+#     second = landmarks[[10, 14, 18]]
+#     anchor = landmarks[0]
+#     second_number = numpy.add(numpy.square(
+#         second[:, 1] - anchor[1]), numpy.square(second[:, 0] - anchor[0]))
+
+#     first_number = numpy.add(numpy.square(
+#         first[:, 1] - anchor[1]), numpy.square(first[:, 0] - anchor[0]))
+#     first_number = numpy.sum(first_number)
+#     second_number = numpy.sum(second_number)
+
+#     ratio1 = numpy.sqrt(first_number) / numpy.sqrt(second_number)
+#     a = numpy.subtract(landmarks[4][:2], landmarks[8][:2])
+#     a = numpy.sum(numpy.square(a))
+#     b = numpy.subtract(landmarks[1][:2], landmarks[2][:2])
+#     b = numpy.sum(numpy.square(b))
+#     ratio2 = a / (b + 0.001)
+#     return ratio1 > 1 and ratio2 < 0.5
+
+
+def getRatioOpen(landmarks: numpy.ndarray):
+    first = landmarks[[7, 11, 15, 19]]
+    second = landmarks[[6, 10, 14, 18]]
+    distance = numpy.subtract(first[:, 1], second[:, 1])
+    remainder = distance[1:]
+    return distance[0] > 0 and numpy.all(remainder < 0)
