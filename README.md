@@ -7,14 +7,11 @@
 python main.py
 ```
 ## *Demo*:
-### Mode 1
 
-https://github.com/ntqqhuiiunn/RandomBallsGame/assets/121285650/470eca6e-970c-451e-bd78-2ada4617f343
-
-### Mode 2
+https://github.com/ntqqhuiiunn/RandomBallsGame/assets/121285650/d52856e4-a5be-4030-b70b-85cbc0d08200
 
 
-https://github.com/ntqqhuiiunn/RandomBallsGame/assets/121285650/41833f29-69cb-4a33-a0b1-c38d0e1f727a
+
 
 
 ## **Config**:
